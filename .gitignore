@@ -1,0 +1,16 @@
+.env
+.env.local
+*.pyc
+__pycache__/
+*.db
+*.egg-info/
+dist/
+build/
+node_modules/
+.DS_Store
+.vscode/
+.idea/
+*.swp
+backend/data/
+frontend/dist/
+.pytest_cache/

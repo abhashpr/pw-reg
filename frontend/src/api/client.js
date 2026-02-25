@@ -1,0 +1,53 @@
+import axios from 'axios'
+import { authStore } from '../store/auth'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+const client = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// Add token to requests
+client.interceptors.request.use((config) => {
+  const token = authStore.getToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Handle errors
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Logout if unauthorized
+    if (error.response?.status === 401) {
+      authStore.logout()
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+/**
+ * Authentication API calls.
+ */
+export const authAPI = {
+  sendOTP: (email) => client.post('/auth/send-otp', { email }),
+  verifyOTP: (email, otp) => client.post('/auth/verify-otp', { email, otp }),
+  getCurrentUser: () => client.get('/auth/me')
+}
+
+/**
+ * Registration API calls.
+ */
+export const registrationAPI = {
+  createOrUpdate: (data) => client.post('/registration/', data),
+  getRegistration: () => client.get('/registration/'),
+  downloadAdmitCard: () => client.get('/registration/admit-card', { responseType: 'blob' })
+}
+
+export default client
