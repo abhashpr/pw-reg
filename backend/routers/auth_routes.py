@@ -10,7 +10,7 @@ from otp_service import OTPService
 from email_service import email_service
 from auth import AuthService, create_or_get_user
 from config import get_settings
-from limiter import limiter
+from rate_limit import rate_limit
 import logging
 
 logger = logging.getLogger("auth_routes")
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/send-otp")
-@limiter.limit("5/minute")
+@rate_limit(5, 60)
 async def send_otp(
     request: Request,
     payload: SendOTPRequest,
@@ -66,7 +66,7 @@ async def send_otp(
 
 
 @router.post("/verify-otp", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@rate_limit(10, 60)
 async def verify_otp(
     request: Request,
     payload: VerifyOTPRequest,

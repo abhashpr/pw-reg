@@ -1,6 +1,1 @@
-"""Shared rate limiter instance to avoid circular imports."""
-
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
+# Replaced by rate_limit.py — kept as empty stub to avoid breaking any cached imports.
