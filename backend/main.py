@@ -1,8 +1,11 @@
 """FastAPI application entry point."""
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 from database import get_db, init_db
 from config import get_settings
@@ -16,12 +19,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main")
 
+# Rate limiter (keyed by client IP)
+limiter = Limiter(key_func=get_remote_address)
+
 # Initialize app
 app = FastAPI(
     title="PWNSAT Registration System",
     version="1.0.0",
     description="Registration and admit card system"
 )
+
+# Attach limiter and its exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Export limiter for use in route files
+__all__ = ["limiter"]
 
 # Get settings
 settings = get_settings()

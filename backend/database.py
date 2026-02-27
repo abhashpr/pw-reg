@@ -49,3 +49,9 @@ def init_db() -> None:
         if "admit_card_sent" not in existing_cols:
             conn.execute(text("ALTER TABLE registrations ADD COLUMN admit_card_sent BOOLEAN DEFAULT 0 NOT NULL"))
             conn.commit()
+
+    otp_cols = [c["name"] for c in inspector.get_columns("otp_codes")]
+    with engine.connect() as conn:
+        if "failed_attempts" not in otp_cols:
+            conn.execute(text("ALTER TABLE otp_codes ADD COLUMN failed_attempts INTEGER DEFAULT 0 NOT NULL"))
+            conn.commit()

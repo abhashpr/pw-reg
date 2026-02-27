@@ -1,6 +1,6 @@
 """Authentication routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
@@ -10,6 +10,7 @@ from otp_service import OTPService
 from email_service import email_service
 from auth import AuthService, create_or_get_user
 from config import get_settings
+from main import limiter
 import logging
 
 logger = logging.getLogger("auth_routes")
@@ -18,8 +19,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/send-otp")
+@limiter.limit("5/minute")
 async def send_otp(
-    request: SendOTPRequest,
+    request: Request,
+    payload: SendOTPRequest,
     db: Session = Depends(get_db)
 ) -> dict:
     """
@@ -35,7 +38,7 @@ async def send_otp(
     Raises:
         HTTPException if email is invalid or OTP send fails
     """
-    email = request.email.lower().strip()
+    email = payload.email.lower().strip()
     
     # Create or get user
     user = create_or_get_user(db, email)
@@ -63,8 +66,10 @@ async def send_otp(
 
 
 @router.post("/verify-otp", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def verify_otp(
-    request: VerifyOTPRequest,
+    request: Request,
+    payload: VerifyOTPRequest,
     db: Session = Depends(get_db)
 ) -> TokenResponse:
     """
@@ -80,8 +85,8 @@ async def verify_otp(
     Raises:
         HTTPException if OTP is invalid or expired
     """
-    email = request.email.lower().strip()
-    otp_code = request.otp.strip()
+    email = payload.email.lower().strip()
+    otp_code = payload.otp.strip()
     
     # Verify OTP
     is_valid = OTPService.verify_otp(db, email, otp_code)

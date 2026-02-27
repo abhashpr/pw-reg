@@ -1,8 +1,18 @@
 """Pydantic schemas for request/response validation."""
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional
+import re
+
+ALLOWED_MEDIUMS = {"Hindi", "English"}
+ALLOWED_COURSES = {
+    "Engineering (JEE)",
+    "Medical (NEET)",
+    "Foundation (Class 6-10)",
+}
+# Name: letters (including Indian Unicode), spaces, dots, hyphens, apostrophes
+NAME_RE = re.compile(r"^[\w\s.\-']+$", re.UNICODE)
 
 
 class SendOTPRequest(BaseModel):
@@ -41,6 +51,35 @@ class RegistrationCreate(BaseModel):
     exam_centre: str = Field(..., min_length=1, max_length=200)
     exam_date: str = Field(..., min_length=1, max_length=100)
     exam_time: str = Field(..., min_length=1, max_length=200)
+
+    @field_validator("name", "father_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not NAME_RE.match(v):
+            raise ValueError("Only letters, spaces, dots, hyphens and apostrophes are allowed")
+        return v
+
+    @field_validator("medium")
+    @classmethod
+    def validate_medium(cls, v: str) -> str:
+        v = v.strip()
+        if v not in ALLOWED_MEDIUMS:
+            raise ValueError(f"Medium must be one of: {', '.join(ALLOWED_MEDIUMS)}")
+        return v
+
+    @field_validator("course")
+    @classmethod
+    def validate_course(cls, v: str) -> str:
+        v = v.strip()
+        if v not in ALLOWED_COURSES:
+            raise ValueError(f"Course must be one of: {', '.join(ALLOWED_COURSES)}")
+        return v
+
+    @field_validator("exam_centre", "exam_date", "exam_time")
+    @classmethod
+    def strip_field(cls, v: str) -> str:
+        return v.strip()
 
 
 class RegistrationUpdate(BaseModel):

@@ -32,6 +32,7 @@ class OTPCode(Base):
     email = Column(String, index=True, nullable=False)
     otp = Column(String, nullable=False)
     expiry = Column(DateTime, nullable=False)
+    failed_attempts = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
