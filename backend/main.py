@@ -3,9 +3,9 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from limiter import limiter
 from sqlalchemy.orm import Session
 from database import get_db, init_db
 from config import get_settings
@@ -19,8 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main")
 
-# Rate limiter (keyed by client IP)
-limiter = Limiter(key_func=get_remote_address)
+# Rate limiter (keyed by client IP) — defined in limiter.py to avoid circular imports
 
 # Initialize app
 app = FastAPI(
@@ -32,9 +31,6 @@ app = FastAPI(
 # Attach limiter and its exception handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Export limiter for use in route files
-__all__ = ["limiter"]
 
 # Get settings
 settings = get_settings()

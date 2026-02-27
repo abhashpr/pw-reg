@@ -10,7 +10,7 @@ from otp_service import OTPService
 from email_service import email_service
 from auth import AuthService, create_or_get_user
 from config import get_settings
-from main import limiter
+from limiter import limiter
 import logging
 
 logger = logging.getLogger("auth_routes")
