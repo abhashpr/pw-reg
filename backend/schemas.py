@@ -66,6 +66,7 @@ class RegistrationResponse(BaseModel):
     exam_centre: str
     exam_date: str
     exam_time: Optional[str] = ""
+    admit_card_sent: bool = False
     updated_at: datetime
 
     model_config = {"from_attributes": True}

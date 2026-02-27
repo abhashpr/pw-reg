@@ -65,7 +65,7 @@ def generate_roll_number(user_id: int) -> str:
     """
     Generate unique roll number for user.
     
-    Format: NSAT2026-XXXX
+    Format: 888XXXX
     
     Args:
         user_id: User ID
@@ -73,8 +73,8 @@ def generate_roll_number(user_id: int) -> str:
     Returns:
         Roll number string
     """
-    return f"NSAT2026-{user_id:04d}"
-
+    # return f"NSAT2026-{user_id:04d}"
+    return f"888{user_id:04d}"
 
 @router.post("/", response_model=RegistrationResponse)
 async def create_or_update_registration(

@@ -56,7 +56,10 @@ export const registrationAPI = {
 export const adminAPI = {
   listUsers: () => client.get('/admin/users'),
   downloadAdmitCard: (userId) => client.get(`/admin/users/${userId}/admit-card`, { responseType: 'blob' }),
-  sendAdmitCard: (userId) => client.post(`/admin/users/${userId}/send-admit-card`)
+  sendAdmitCard: (userId) => client.post(`/admin/users/${userId}/send-admit-card`),
+  deleteUser: (userId) => client.delete(`/admin/users/${userId}`),
+  bulkSendAdmitCards: (userIds) => client.post('/admin/users/bulk-send', { user_ids: userIds }),
+  bulkDeleteUsers: (userIds) => client.post('/admin/users/bulk-delete', { user_ids: userIds })
 }
 
 /**

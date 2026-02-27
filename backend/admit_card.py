@@ -239,6 +239,7 @@ class AdmitCardGenerator:
                 "5. Follow all instructions given by the invigilator.",
                 "6. Any malpractice will result in disqualification.",
                 "7. Mobile phones and electronic devices are strictly prohibited inside the exam hall.",
+                "8. Carry a Blue / Black ball point pen."
             ]
             
             for instruction in instructions:

@@ -39,7 +39,31 @@
           placeholder="Search by name, email, roll no, course, centre..."
           class="search-input"
         />
+        <button
+          class="btn-filter"
+          :class="{ 'btn-filter-active': pendingOnly }"
+          @click="pendingOnly = !pendingOnly"
+          title="Toggle: show only users with admit card not yet sent"
+        >
+          {{ pendingOnly ? '⚠ Pending Only' : '⚠ Pending Only' }}
+          <span class="filter-badge">{{ pendingCount }}</span>
+        </button>
         <span class="search-count">{{ filteredUsers.length }} results</span>
+      </div>
+
+      <!-- Bulk toolbar -->
+      <div v-if="selectedIds.length > 0" class="bulk-toolbar">
+        <span class="bulk-count">{{ selectedIds.length }} selected</span>
+        <button class="btn btn-bulk-send" @click="bulkSendCards" :disabled="bulkLoading !== null">
+          {{ bulkLoading === 'send' ? 'Sending...' : `✉ Send (${selectedIds.length})` }}
+        </button>
+        <button class="btn btn-bulk-send btn-bulk-send-pending" @click="bulkSendPending" :disabled="bulkLoading !== null">
+          {{ bulkLoading === 'send-pending' ? 'Sending...' : `✉ Send Pending Only` }}
+        </button>
+        <button class="btn btn-bulk-delete" @click="bulkDeleteUsers" :disabled="bulkLoading !== null">
+          {{ bulkLoading === 'delete' ? 'Deleting...' : `🗑 Delete (${selectedIds.length})` }}
+        </button>
+        <button class="btn btn-bulk-cancel" @click="selectedIds = []" :disabled="bulkLoading !== null">✕ Clear</button>
       </div>
 
       <!-- Loading -->
@@ -56,6 +80,9 @@
         <table class="users-table">
           <thead>
             <tr>
+              <th class="th-check">
+                <input type="checkbox" :checked="allSelected" @change="allSelected = $event.target.checked" title="Select all" />
+              </th>
               <th>#</th>
               <th>Email</th>
               <th>Roll No.</th>
@@ -66,11 +93,15 @@
               <th>Exam Date</th>
               <th>Exam Centre</th>
               <th>Exam Time</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(user, index) in filteredUsers" :key="user.id">
+            <tr v-for="(user, index) in filteredUsers" :key="user.id" :class="{ 'row-selected': selectedIds.includes(user.id) }">
+              <td class="td-check">
+                <input type="checkbox" :checked="selectedIds.includes(user.id)" @change="toggleSelect(user.id)" />
+              </td>
               <td class="td-index">{{ index + 1 }}</td>
               <td class="td-email">{{ user.email }}</td>
               <template v-if="user.registration">
@@ -82,6 +113,11 @@
                 <td>{{ user.registration.exam_date }}</td>
                 <td>{{ user.registration.exam_centre }}</td>
                 <td>{{ user.registration.exam_time || '-' }}</td>
+                <td>
+                  <span :class="user.registration.admit_card_sent ? 'badge-sent' : 'badge-pending'">
+                    {{ user.registration.admit_card_sent ? 'Sent' : 'Pending' }}
+                  </span>
+                </td>
                 <td class="td-actions">
                   <button
                     class="btn-action btn-download"
@@ -97,17 +133,34 @@
                     @click="sendCard(user)"
                     title="Send Admit Card via Email"
                   >
-                    {{ actionLoading[user.id] === 'send' ? 'Sending...' : '✉ Send' }}
+                    {{ actionLoading[user.id] === 'send' ? 'Sending...' : user.registration.admit_card_sent ? '↻ Resend' : '✉ Send' }}
+                  </button>
+                  <button
+                    class="btn-action btn-delete"
+                    :disabled="actionLoading[user.id]"
+                    @click="deleteUser(user)"
+                    title="Delete User"
+                  >
+                    🗑 Delete
                   </button>
                 </td>
               </template>
               <template v-else>
-                <td colspan="7" class="td-no-reg">— Not Registered —</td>
-                <td></td>
+                <td colspan="8" class="td-no-reg">— Not Registered —</td>
+                <td class="td-actions">
+                  <button
+                    class="btn-action btn-delete"
+                    :disabled="actionLoading[user.id]"
+                    @click="deleteUser(user)"
+                    title="Delete User"
+                  >
+                    🗑 Delete
+                  </button>
+                </td>
               </template>
             </tr>
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="10" class="td-empty">No users found.</td>
+              <td colspan="12" class="td-empty">No users found.</td>
             </tr>
           </tbody>
         </table>
@@ -131,6 +184,9 @@ const error = ref('')
 const userEmail = ref('')
 const actionLoading = reactive({})
 const toast = ref(null)
+const selectedIds = ref([])
+const bulkLoading = ref(null)
+const pendingOnly = ref(false)
 
 // Redirect non-admins
 if (!authStore.isAdmin()) {
@@ -164,10 +220,20 @@ const unregisteredCount = computed(() =>
   users.value.filter(u => !u.registration).length
 )
 
+const pendingCount = computed(() =>
+  users.value.filter(u => u.registration && !u.registration.admit_card_sent).length
+)
+
 const filteredUsers = computed(() => {
   const q = searchQuery.value.toLowerCase().trim()
-  if (!q) return users.value
-  return users.value.filter(u => {
+  let list = users.value
+
+  if (pendingOnly.value) {
+    list = list.filter(u => u.registration && !u.registration.admit_card_sent)
+  }
+
+  if (!q) return list
+  return list.filter(u => {
     const r = u.registration
     return (
       u.email.toLowerCase().includes(q) ||
@@ -179,6 +245,19 @@ const filteredUsers = computed(() => {
     )
   })
 })
+
+const allSelected = computed({
+  get: () => filteredUsers.value.length > 0 && filteredUsers.value.every(u => selectedIds.value.includes(u.id)),
+  set: (val) => {
+    selectedIds.value = val ? filteredUsers.value.map(u => u.id) : []
+  }
+})
+
+const toggleSelect = (id) => {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx === -1) selectedIds.value.push(id)
+  else selectedIds.value.splice(idx, 1)
+}
 
 const showToast = (message, type = 'success') => {
   toast.value = { message, type }
@@ -209,6 +288,7 @@ const sendCard = async (user) => {
   actionLoading[user.id] = 'send'
   try {
     await adminAPI.sendAdmitCard(user.id)
+    user.registration.admit_card_sent = true
     showToast(`Admit card sent to ${user.email}`, 'success')
   } catch (err) {
     showToast('Failed to send admit card.', 'error')
@@ -221,6 +301,82 @@ const sendCard = async (user) => {
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+const deleteUser = async (user) => {
+  if (!confirm(`Delete user "${user.email}"?\nThis will permanently remove the user and their registration.`)) return
+  actionLoading[user.id] = 'delete'
+  try {
+    await adminAPI.deleteUser(user.id)
+    users.value = users.value.filter(u => u.id !== user.id)
+    selectedIds.value = selectedIds.value.filter(id => id !== user.id)
+    showToast(`User ${user.email} deleted.`, 'success')
+  } catch (err) {
+    showToast('Failed to delete user.', 'error')
+    console.error('Delete error:', err)
+  } finally {
+    delete actionLoading[user.id]
+  }
+}
+
+const bulkSendCards = async () => {
+  const ids = selectedIds.value.filter(id => users.value.find(u => u.id === id && u.registration))
+  if (!ids.length) { showToast('None of the selected users have registrations.', 'error'); return }
+  bulkLoading.value = 'send'
+  try {
+    const res = await adminAPI.bulkSendAdmitCards(ids)
+    // Mark sent locally
+    ids.forEach(id => {
+      const u = users.value.find(u => u.id === id)
+      if (u && u.registration && res.data?.sent?.includes(id)) u.registration.admit_card_sent = true
+    })
+    showToast(res.data?.message || `Sent to ${ids.length} user(s).`, 'success')
+    selectedIds.value = []
+  } catch (err) {
+    showToast('Bulk send failed.', 'error')
+    console.error('Bulk send error:', err)
+  } finally {
+    bulkLoading.value = null
+  }
+}
+
+const bulkSendPending = async () => {
+  const ids = selectedIds.value.filter(id => {
+    const u = users.value.find(u => u.id === id)
+    return u && u.registration && !u.registration.admit_card_sent
+  })
+  if (!ids.length) { showToast('All selected users already have their admit card sent.', 'error'); return }
+  bulkLoading.value = 'send-pending'
+  try {
+    const res = await adminAPI.bulkSendAdmitCards(ids)
+    ids.forEach(id => {
+      const u = users.value.find(u => u.id === id)
+      if (u && u.registration && res.data?.sent?.includes(id)) u.registration.admit_card_sent = true
+    })
+    showToast(res.data?.message || `Sent to ${ids.length} pending user(s).`, 'success')
+    selectedIds.value = []
+  } catch (err) {
+    showToast('Bulk send failed.', 'error')
+    console.error('Bulk send pending error:', err)
+  } finally {
+    bulkLoading.value = null
+  }
+}
+
+const bulkDeleteUsers = async () => {
+  if (!confirm(`Delete ${selectedIds.value.length} selected user(s)?\nThis cannot be undone.`)) return
+  bulkLoading.value = 'delete'
+  try {
+    await adminAPI.bulkDeleteUsers(selectedIds.value)
+    users.value = users.value.filter(u => !selectedIds.value.includes(u.id))
+    selectedIds.value = []
+    showToast('Selected users deleted.', 'success')
+  } catch (err) {
+    showToast('Bulk delete failed.', 'error')
+    console.error('Bulk delete error:', err)
+  } finally {
+    bulkLoading.value = null
+  }
 }
 </script>
 
@@ -342,6 +498,51 @@ const handleLogout = () => {
   white-space: nowrap;
 }
 
+/* Pending filter toggle */
+.btn-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  background: #fff8e1;
+  color: #f57f17;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-filter:hover {
+  background: #fff3cd;
+  border-color: #ffca28;
+}
+
+.btn-filter-active {
+  background: #f57f17;
+  color: white;
+  border-color: #ef6c00;
+}
+
+.btn-filter-active:hover {
+  background: #ef6c00;
+}
+
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 /* Table */
 .table-wrapper {
   overflow-x: auto;
@@ -458,6 +659,138 @@ const handleLogout = () => {
 
 .btn-send:hover:not(:disabled) {
   background: #388e3c;
+  color: white;
+}
+
+/* Delete button */
+.btn-delete {
+  background: #fdecea;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #c62828;
+  color: white;
+}
+
+/* Checkbox column */
+.th-check, .td-check {
+  width: 36px;
+  text-align: center;
+  padding: 8px 6px;
+}
+
+input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.row-selected {
+  background: #f0f4ff !important;
+}
+
+/* Bulk toolbar */
+.bulk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: #e8eaf6;
+  border-bottom: 1px solid #c5cae9;
+  flex-wrap: wrap;
+}
+
+.bulk-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3949ab;
+  flex: 1;
+  min-width: 100px;
+}
+
+.btn-bulk-send {
+  background: #e8f5e9;
+  color: #388e3c;
+  border: 1px solid #c8e6c9;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-bulk-send:hover:not(:disabled) { background: #388e3c; color: white; }
+
+.btn-bulk-delete {
+  background: #fdecea;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-bulk-delete:hover:not(:disabled) { background: #c62828; color: white; }
+
+.btn-bulk-cancel {
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-bulk-cancel:hover:not(:disabled) { background: #e0e0e0; }
+
+.btn-bulk-send:disabled, .btn-bulk-delete:disabled, .btn-bulk-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sent / Pending badges */
+.badge-sent {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+  white-space: nowrap;
+}
+
+.badge-pending {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #fff8e1;
+  color: #f57f17;
+  border: 1px solid #ffe082;
+  white-space: nowrap;
+}
+
+.btn-bulk-send-pending {
+  background: #fff8e1;
+  color: #f57f17;
+  border-color: #ffe082;
+}
+
+.btn-bulk-send-pending:hover:not(:disabled) {
+  background: #f57f17;
   color: white;
 }
 

@@ -53,6 +53,7 @@ class Registration(Base):
     exam_centre = Column(String, nullable=False)
     exam_date = Column(String, nullable=False)
     exam_time = Column(String, nullable=True, default="")
+    admit_card_sent = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

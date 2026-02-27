@@ -46,3 +46,6 @@ def init_db() -> None:
         if "exam_time" not in existing_cols:
             conn.execute(text("ALTER TABLE registrations ADD COLUMN exam_time VARCHAR DEFAULT ''"))
             conn.commit()
+        if "admit_card_sent" not in existing_cols:
+            conn.execute(text("ALTER TABLE registrations ADD COLUMN admit_card_sent BOOLEAN DEFAULT 0 NOT NULL"))
+            conn.commit()
