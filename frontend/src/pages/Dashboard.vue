@@ -8,6 +8,9 @@
 
       <div class="user-info">
         <p><strong>Logged in as:</strong> {{ userEmail }}</p>
+        <router-link v-if="isAdmin" to="/admin" class="btn btn-admin">
+          Admin Panel
+        </router-link>
       </div>
 
       <div v-if="loading" class="loading">Loading your registration...</div>
@@ -51,6 +54,11 @@
             <span class="value">{{ registration.exam_centre }}</span>
           </div>
 
+          <div class="detail-row" v-if="registration.exam_time">
+            <span class="label">Exam Time:</span>
+            <span class="value">{{ registration.exam_time }}</span>
+          </div>
+
           <div class="detail-row">
             <span class="label">Last Updated:</span>
             <span class="value">{{ formatDate(registration.updated_at) }}</span>
@@ -91,12 +99,14 @@ import { authStore } from '../store/auth'
 const router = useRouter()
 const registration = ref(null)
 const userEmail = ref('')
+const isAdmin = ref(false)
 const loading = ref(true)
 const downloadLoading = ref(false)
 const error = ref('')
 
 onMounted(async () => {
   userEmail.value = authStore.getEmail()
+  isAdmin.value = authStore.isAdmin()
 
   try {
     const response = await registrationAPI.getRegistration()
@@ -203,6 +213,25 @@ h2 {
   border-radius: 5px;
   margin-bottom: 20px;
   color: #666;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-admin {
+  background: #ff6b35;
+  color: white;
+  padding: 8px 16px;
+  flex: none;
+  width: auto;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: 600;
+}
+
+.btn-admin:hover {
+  background: #e55a25;
 }
 
 .loading {

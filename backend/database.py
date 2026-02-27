@@ -35,5 +35,14 @@ def get_db():
 
 
 def init_db() -> None:
-    """Initialize database tables."""
+    """Initialize database tables and apply any missing column migrations."""
+    from sqlalchemy import text, inspect
     Base.metadata.create_all(bind=engine)
+
+    # Migrate: add exam_time column to registrations if it doesn't exist
+    with engine.connect() as conn:
+        inspector = inspect(engine)
+        existing_cols = [c["name"] for c in inspector.get_columns("registrations")]
+        if "exam_time" not in existing_cols:
+            conn.execute(text("ALTER TABLE registrations ADD COLUMN exam_time VARCHAR DEFAULT ''"))
+            conn.commit()

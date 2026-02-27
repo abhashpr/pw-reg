@@ -1,13 +1,15 @@
 """Authentication routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
+from typing import Optional
 from database import get_db
 from schemas import SendOTPRequest, VerifyOTPRequest, TokenResponse
 from models import User
 from otp_service import OTPService
 from email_service import email_service
 from auth import AuthService, create_or_get_user
+from config import get_settings
 import logging
 
 logger = logging.getLogger("auth_routes")
@@ -111,7 +113,7 @@ async def verify_otp(
 @router.get("/me")
 async def get_current_user(
     db: Session = Depends(get_db),
-    authorization: str = None
+    authorization: Optional[str] = Header(None)
 ) -> dict:
     """
     Get current authenticated user.
@@ -156,5 +158,6 @@ async def get_current_user(
         "id": user.id,
         "email": user.email,
         "is_verified": user.is_verified,
+        "is_admin": user.email.lower() == get_settings().sender_email.lower(),
         "created_at": user.created_at.isoformat()
     }

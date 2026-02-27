@@ -1,0 +1,39 @@
+{
+  "_comment": "Edit this file to configure available exam centres, dates and time slots. Changes take effect immediately without restarting the server.",
+  "centres": {
+    "Gangapur City": {
+      "dates": {
+        "07th March 2026": {
+          "slots": [
+            "09:30 AM to 10:30 AM"
+          ]
+        },
+        "08th March 2026": {
+          "slots": [
+            "09:00 AM to 10:00 AM",
+            "12:00 PM to 01:00 PM",
+            "03:00 PM to 04:00 PM"
+          ]
+        }
+      }
+    },
+    "Sapotara": {
+      "dates": {
+        "08th March 2026": {
+          "slots": [
+            "12:00 PM to 01:00 PM"
+          ]
+        }
+      }
+    },
+    "Wazirpur": {
+      "dates": {
+        "08th March 2026": {
+          "slots": [
+            "12:00 PM to 01:00 PM"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -38,8 +38,9 @@ class RegistrationCreate(BaseModel):
     father_name: str = Field(..., min_length=1, max_length=200)
     medium: str = Field(..., min_length=1, max_length=100)
     course: str = Field(..., min_length=1, max_length=100)
-    exam_date: str = Field(..., description="Date in YYYY-MM-DD format")
     exam_centre: str = Field(..., min_length=1, max_length=200)
+    exam_date: str = Field(..., min_length=1, max_length=100)
+    exam_time: str = Field(..., min_length=1, max_length=200)
 
 
 class RegistrationUpdate(BaseModel):
@@ -48,8 +49,9 @@ class RegistrationUpdate(BaseModel):
     father_name: Optional[str] = Field(None, min_length=1, max_length=200)
     medium: Optional[str] = Field(None, min_length=1, max_length=100)
     course: Optional[str] = Field(None, min_length=1, max_length=100)
-    exam_date: Optional[str] = Field(None, description="Date in YYYY-MM-DD format")
     exam_centre: Optional[str] = Field(None, min_length=1, max_length=200)
+    exam_date: Optional[str] = Field(None, max_length=100)
+    exam_time: Optional[str] = Field(None, max_length=200)
 
 
 class RegistrationResponse(BaseModel):
@@ -61,8 +63,9 @@ class RegistrationResponse(BaseModel):
     father_name: str
     medium: str
     course: str
-    exam_date: str
     exam_centre: str
+    exam_date: str
+    exam_time: Optional[str] = ""
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -75,5 +78,6 @@ class AdmitCardData(BaseModel):
     father_name: str
     medium: str
     course: str
-    exam_date: str
     exam_centre: str
+    exam_date: str
+    exam_time: Optional[str] = ""

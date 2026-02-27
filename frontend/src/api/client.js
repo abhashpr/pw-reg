@@ -50,4 +50,20 @@ export const registrationAPI = {
   downloadAdmitCard: () => client.get('/registration/admit-card', { responseType: 'blob' })
 }
 
+/**
+ * Admin API calls.
+ */
+export const adminAPI = {
+  listUsers: () => client.get('/admin/users'),
+  downloadAdmitCard: (userId) => client.get(`/admin/users/${userId}/admit-card`, { responseType: 'blob' }),
+  sendAdmitCard: (userId) => client.post(`/admin/users/${userId}/send-admit-card`)
+}
+
+/**
+ * Config API calls.
+ */
+export const configAPI = {
+  getExamSlots: () => client.get('/config/exam-slots')
+}
+
 export default client

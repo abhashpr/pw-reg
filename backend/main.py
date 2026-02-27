@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from database import get_db, init_db
 from config import get_settings
-from routers import auth_routes, registration_routes
+from routers import auth_routes, registration_routes, admin_routes, config_routes
 import logging
 
 # Configure logging
@@ -38,6 +38,8 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_routes.router)
 app.include_router(registration_routes.router)
+app.include_router(admin_routes.router)
+app.include_router(config_routes.router)
 
 
 @app.on_event("startup")

@@ -83,13 +83,23 @@ const handleSubmit = async () => {
     const response = await authAPI.verifyOTP(email.value, otp.value)
     const token = response.data.access_token
 
-    success.value = 'OTP verified! Redirecting...'
-    authStore.setToken(token, email.value)
+    // Temporarily set token so /me call includes auth header
+    authStore.setToken(token, email.value, false)
+
+    // Fetch profile to determine admin status
+    let isAdmin = false
+    try {
+      const meResponse = await authAPI.getCurrentUser()
+      isAdmin = meResponse.data.is_admin === true
+    } catch (_) {}
+
+    authStore.setToken(token, email.value, isAdmin)
     sessionStorage.removeItem('pending_email')
 
+    success.value = 'OTP verified! Redirecting...'
     setTimeout(() => {
-      router.push('/dashboard')
-    }, 1500)
+      router.push(isAdmin ? '/admin' : '/dashboard')
+    }, 1000)
   } catch (err) {
     const message = err.response?.data?.detail || 'Failed to verify OTP. Please try again.'
     error.value = message

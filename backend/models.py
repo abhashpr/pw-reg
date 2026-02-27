@@ -50,8 +50,9 @@ class Registration(Base):
     father_name = Column(String, nullable=False)
     medium = Column(String, nullable=False)
     course = Column(String, nullable=False)
-    exam_date = Column(String, nullable=False)
     exam_centre = Column(String, nullable=False)
+    exam_date = Column(String, nullable=False)
+    exam_time = Column(String, nullable=True, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

@@ -107,8 +107,9 @@ async def create_or_update_registration(
         registration.father_name = request.father_name
         registration.medium = request.medium
         registration.course = request.course
-        registration.exam_date = request.exam_date
         registration.exam_centre = request.exam_centre
+        registration.exam_date = request.exam_date
+        registration.exam_time = request.exam_time
         
         logger.info(f"Registration updated for user: {current_user.email}")
     else:
@@ -122,8 +123,9 @@ async def create_or_update_registration(
             father_name=request.father_name,
             medium=request.medium,
             course=request.course,
+            exam_centre=request.exam_centre,
             exam_date=request.exam_date,
-            exam_centre=request.exam_centre
+            exam_time=request.exam_time
         )
         
         db.add(registration)
@@ -202,8 +204,9 @@ async def download_admit_card(
             father_name=registration.father_name,
             medium=registration.medium,
             course=registration.course,
+            exam_centre=registration.exam_centre,
             exam_date=registration.exam_date,
-            exam_centre=registration.exam_centre
+            exam_time=registration.exam_time or ""
         )
         
         filename = f"admit_card_{registration.roll_no}.pdf"

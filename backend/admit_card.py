@@ -39,8 +39,9 @@ class AdmitCardGenerator:
         father_name: str,
         medium: str,
         course: str,
+        exam_centre: str,
         exam_date: str,
-        exam_centre: str
+        exam_time: str = ""
     ) -> BytesIO:
         """
         Generate admit card PDF as BytesIO matching PWNSAT 2026 format.
@@ -51,8 +52,9 @@ class AdmitCardGenerator:
             father_name: Father's name
             medium: Medium of exam
             course: Course opted
-            exam_date: Date of exam
             exam_centre: Exam centre
+            exam_date: Date of exam
+            exam_time: Exam time slot
             
         Returns:
             BytesIO object containing PDF
@@ -145,6 +147,8 @@ class AdmitCardGenerator:
                 photo_box_style
             )
             
+            story.append(Spacer(1, 1.3 * cm))
+            
             # Create table with photo box centered
             photo_table_data = [[photo_text]]
             photo_table = Table(photo_table_data, colWidths=[4*cm], rowHeights=[3*cm])
@@ -156,7 +160,7 @@ class AdmitCardGenerator:
             photo_table.hAlign = 'CENTER'
             story.append(photo_table)
             
-            story.append(Spacer(1, 0.3 * cm))
+            story.append(Spacer(1, 1.3 * cm))
             
             # ===== FORM FIELDS WITH UNDERLINES =====
             field_label_style = ParagraphStyle(
@@ -182,8 +186,9 @@ class AdmitCardGenerator:
                 ("Father's Name", father_name),
                 ("Medium", medium),
                 ("Course Opted for", course),
-                ("Date of Exam", exam_date),
                 ("Exam Centre", exam_centre),
+                ("Date of Exam", exam_date),
+                ("Exam Time", exam_time or "-"),
             ]
             
             for label, value in fields:
@@ -204,7 +209,7 @@ class AdmitCardGenerator:
                 ]))
                 story.append(field_table)
             
-            story.append(Spacer(1, 0.4 * cm))
+            story.append(Spacer(1, 1.4 * cm))
             
             # ===== INSTRUCTIONS SECTION =====
             instructions_title = ParagraphStyle(
@@ -230,7 +235,7 @@ class AdmitCardGenerator:
                 "1. This admit card must be brought to the examination centre.",
                 "2. Arrive at the examination centre 30 minutes before the examination starts.",
                 "3. Carry a valid identity proof (Aadhar/School ID) along with this admit card.",
-                "4. Write your roll number on all answer sheets.",
+                "4. Write your roll number on OMR sheet.",
                 "5. Follow all instructions given by the invigilator.",
                 "6. Any malpractice will result in disqualification.",
                 "7. Mobile phones and electronic devices are strictly prohibited inside the exam hall.",
@@ -239,7 +244,7 @@ class AdmitCardGenerator:
             for instruction in instructions:
                 story.append(Paragraph(instruction, instructions_text))
             
-            story.append(Spacer(1, 0.5 * cm))
+            story.append(Spacer(1, 1.5 * cm))
             
             # ===== SIGNATURE SECTION =====
             signature_data = [

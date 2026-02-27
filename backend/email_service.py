@@ -1,8 +1,10 @@
-"""Email service for sending OTP via Gmail SMTP."""
+"""Email service for sending OTP and admit card via Gmail SMTP."""
 
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from config import get_settings
 import logging
 
@@ -92,6 +94,77 @@ class EmailService:
             return False
         except Exception as e:
             logger.error(f"Error sending email to {recipient_email}: {str(e)}")
+            return False
+
+    def send_admit_card_email(
+        self,
+        recipient_email: str,
+        student_name: str,
+        roll_no: str,
+        pdf_bytes: bytes
+    ) -> bool:
+        """
+        Send admit card PDF as email attachment.
+
+        Args:
+            recipient_email: Destination email
+            student_name: Student's full name
+            roll_no: Roll number for filename
+            pdf_bytes: PDF content as bytes
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        try:
+            if not self.sender_email or not self.sender_password:
+                logger.error("Email credentials not configured")
+                return False
+
+            message = MIMEMultipart("mixed")
+            message["Subject"] = f"PWNSAT 2026 - Admit Card ({roll_no})"
+            message["From"] = self.sender_email
+            message["To"] = recipient_email
+
+            body = MIMEText(f"""\
+Hi {student_name},
+
+Please find your PWNSAT 2026 Admit Card attached to this email.
+
+Roll Number : {roll_no}
+
+Instructions:
+- Bring this admit card to the examination centre.
+- Carry a valid photo ID along with this admit card.
+- Arrive 30 minutes before the exam starts.
+
+Best regards,
+PWNSAT Registration Team
+""", "plain")
+            message.attach(body)
+
+            # Attach PDF
+            attachment = MIMEBase("application", "pdf")
+            attachment.set_payload(pdf_bytes)
+            encoders.encode_base64(attachment)
+            attachment.add_header(
+                "Content-Disposition",
+                f'attachment; filename="admit_card_{roll_no}.pdf"'
+            )
+            message.attach(attachment)
+
+            with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10) as server:
+                server.starttls()
+                server.login(self.sender_email, self.sender_password)
+                server.sendmail(self.sender_email, recipient_email, message.as_string())
+
+            logger.info(f"Admit card sent to {recipient_email} (roll: {roll_no})")
+            return True
+
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error sending admit card to {recipient_email}: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Error sending admit card to {recipient_email}: {str(e)}")
             return False
 
 
