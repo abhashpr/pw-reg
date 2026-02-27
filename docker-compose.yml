@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: pwnsat-backend
     restart: always
-    env_file: .env
+    env_file: ./backend/.env
     volumes:
       # Persist SQLite database across container restarts / redeploys
       - db_data:/app/data
