@@ -89,19 +89,33 @@ class OTPService:
         Returns:
             True if OTP is valid, False otherwise
         """
-        otp = db.query(OTPCode).filter(
-            OTPCode.email == email,
-            OTPCode.otp == otp_code
-        ).first()
+        # First check if any OTP exists for this email
+        existing_otp = db.query(OTPCode).filter(
+            OTPCode.email == email
+        ).order_by(OTPCode.created_at.desc()).first()
         
-        if not otp:
-            logger.warning(f"OTP not found for {email}")
+        if not existing_otp:
+            logger.warning(f"No OTP exists for {email} - user needs to request OTP first")
             return False
         
-        if otp.expiry < datetime.utcnow():
+        # Check if OTP has expired
+        if existing_otp.expiry < datetime.utcnow():
             logger.warning(f"OTP expired for {email}")
-            db.delete(otp)
+            db.delete(existing_otp)
             db.commit()
+            return False
+        
+        # Check if OTP code matches
+        if existing_otp.otp != otp_code:
+            existing_otp.failed_attempts += 1
+            db.commit()
+            logger.warning(f"Invalid OTP code for {email} (attempt {existing_otp.failed_attempts})")
+            
+            # Invalidate OTP after too many failed attempts
+            if existing_otp.failed_attempts >= 5:
+                logger.warning(f"OTP invalidated for {email} after 5 failed attempts")
+                db.delete(existing_otp)
+                db.commit()
             return False
         
         logger.info(f"OTP verified for {email}")
