@@ -44,6 +44,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # Admin access – JSON array of email addresses that have admin privileges.
+    # If not set, falls back to SENDER_EMAIL only.
+    # Example: ADMIN_EMAILS=["alice@example.com","bob@example.com"]
+    admin_emails: List[str] = []
+
 
 @lru_cache()
 def get_settings() -> Settings:

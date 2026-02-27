@@ -1,4 +1,4 @@
-"""Admin routes - restricted to SENDER_EMAIL only."""
+"""Admin routes - restricted to admin email accounts."""
 
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import StreamingResponse
@@ -53,7 +53,7 @@ def get_admin_user(
     db: Session = Depends(get_db),
     authorization: Optional[str] = Header(None)
 ) -> User:
-    """Only allow access to the SENDER_EMAIL account."""
+    """Only allow access to configured admin email accounts."""
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +78,8 @@ def get_admin_user(
         )
 
     settings = get_settings()
-    if user.email.lower() != settings.sender_email.lower():
+    allowed = [e.lower() for e in (settings.admin_emails or [settings.sender_email])]
+    if user.email.lower() not in allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access only"
