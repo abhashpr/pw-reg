@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pwnsat-backend
+    restart: always
+    env_file: .env
+    volumes:
+      # Persist SQLite database across container restarts / redeploys
+      - db_data:/app/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    networks:
+      - internal
+
+  # ── Vue 3 Frontend + Nginx ──────────────────────────────────────────────────
+  frontend:
+    build:
+      # Root context so Dockerfile can access nginx/nginx.conf
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Vite bakes this at build-time; nginx proxies /api → backend:8000
+        VITE_API_URL: /api
+    container_name: pwnsat-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge

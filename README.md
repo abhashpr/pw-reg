@@ -477,6 +477,80 @@ For higher load:
 - Verify paths in .service file
 - Check file permissions: `sudo chown ubuntu:ubuntu pw-reg -R`
 
+## Docker Deployment (AWS Lightsail)
+
+### Prerequisites
+- Docker Engine ≥ 24 and Docker Compose v2 installed on the Lightsail instance
+- Port **80** open in the Lightsail firewall
+
+### Quick Start
+
+```bash
+# 1. Clone / copy the project onto your Lightsail instance
+git clone <repo-url> pw-reg && cd pw-reg
+
+# 2. Create your .env from the example
+cp .env.example .env
+nano .env          # fill in SECRET_KEY, SENDER_EMAIL, SENDER_PASSWORD, CORS_ORIGINS
+
+# 3. Build and start all containers
+docker compose up -d --build
+
+# 4. Verify everything is running
+docker compose ps
+docker compose logs -f
+```
+
+Open `http://<your-lightsail-public-ip>` in a browser.
+
+### Architecture
+
+```
+Browser ──► :80 nginx (frontend container)
+                │
+                ├── /          → serves Vue SPA static files
+                └── /api/*     → proxied to backend:8000/*
+                                   (prefix stripped by nginx)
+```
+
+The SQLite database is stored in a named Docker volume (`db_data`) so it survives container restarts and redeploys.
+
+### Useful Commands
+
+```bash
+# Rebuild after code changes
+docker compose up -d --build
+
+# View logs
+docker compose logs backend
+docker compose logs frontend
+
+# Open a shell in the backend container
+docker compose exec backend sh
+
+# Backup the SQLite database
+docker compose exec backend cp /app/data/app.db /app/data/app.db.bak
+docker cp pwnsat-backend:/app/data/app.db ./app_backup.db
+
+# Stop everything
+docker compose down
+
+# Stop and delete the database volume (destructive!)
+docker compose down -v
+```
+
+### Updating CORS for Production
+
+Edit `.env` and set your Lightsail IP or domain:
+
+```
+CORS_ORIGINS=["http://YOUR_IP","https://yourdomain.com"]
+```
+
+Then restart: `docker compose up -d`
+
+---
+
 ## Future Enhancements
 
 - [ ] Bulk registration upload (CSV)

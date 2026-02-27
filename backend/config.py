@@ -34,8 +34,15 @@ class Settings(BaseSettings):
     otp_expiry_minutes: int = 5
     otp_rate_limit_seconds: int = 60
     
-    # CORS
-    cors_origins: List[str] = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+    # CORS – add your Lightsail IP/domain in .env as:
+    # CORS_ORIGINS=["http://your-ip","https://yourdomain.com"]
+    cors_origins: List[str] = [
+        "http://localhost",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1",
+        "http://127.0.0.1:5173",
+    ]
 
 
 @lru_cache()

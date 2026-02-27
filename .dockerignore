@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Environment files (never bake secrets into images)
+.env
+.env.*
+!.env.example
+
+# Python artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.egg-info/
+**/dist/
+**/build/
+**/.pytest_cache/
+**/.mypy_cache/
+**/venv/
+**/.venv/
+
+# SQLite database (mounted as volume)
+backend/data/
+
+# Node
+**/node_modules/
+
+# Logs
+**/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
