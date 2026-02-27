@@ -51,10 +51,10 @@ class OTPService:
                 logger.warning(f"OTP rate limit exceeded for {email}")
                 return None
         
-        # Clean up old OTPs
+        # Clean up ALL previous OTPs for this email (expired and valid)
+        # Ensures only one active OTP per email at a time
         db.query(OTPCode).filter(
-            OTPCode.email == email,
-            OTPCode.expiry < datetime.utcnow()
+            OTPCode.email == email
         ).delete()
         db.commit()
         
@@ -93,10 +93,14 @@ class OTPService:
         existing_otp = db.query(OTPCode).filter(
             OTPCode.email == email
         ).order_by(OTPCode.created_at.desc()).first()
-        
+
         if not existing_otp:
-            logger.warning(f"No OTP exists for {email} - user needs to request OTP first")
+            # Log all emails in otp_codes to debug email mismatch
+            all_emails = [r.email for r in db.query(OTPCode.email).all()]
+            logger.warning(f"No OTP exists for '{email}' | DB has OTPs for: {all_emails}")
             return False
+        
+        logger.info(f"verify_otp: queried='{email}' stored_email='{existing_otp.email}' stored_otp='{existing_otp.otp}'")
         
         # Check if OTP has expired
         if existing_otp.expiry < datetime.utcnow():
@@ -109,7 +113,11 @@ class OTPService:
         if existing_otp.otp != otp_code:
             existing_otp.failed_attempts += 1
             db.commit()
-            logger.warning(f"Invalid OTP code for {email} (attempt {existing_otp.failed_attempts})")
+            logger.warning(
+                f"Invalid OTP code for {email} (attempt {existing_otp.failed_attempts}) "
+                f"| stored='{existing_otp.otp}' len={len(existing_otp.otp)} "
+                f"| submitted='{otp_code}' len={len(otp_code)}"
+            )
             
             # Invalidate OTP after too many failed attempts
             if existing_otp.failed_attempts >= 5:
