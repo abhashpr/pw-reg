@@ -11,6 +11,7 @@ ALLOWED_COURSES = {
     "Medical (NEET)",
     "Foundation (Class 6-10)",
 }
+ALLOWED_CLASSES = {"X", "XI", "XII", "Dropper"}
 # Name: letters (including Indian Unicode), spaces, dots, hyphens, apostrophes
 NAME_RE = re.compile(r"^[\w\s.\-']+$", re.UNICODE)
 
@@ -46,6 +47,7 @@ class RegistrationCreate(BaseModel):
     """Registration form input."""
     name: str = Field(..., min_length=1, max_length=200)
     father_name: str = Field(..., min_length=1, max_length=200)
+    current_class: str = Field(..., min_length=1, max_length=50)
     medium: str = Field(..., min_length=1, max_length=100)
     course: str = Field(..., min_length=1, max_length=100)
     exam_centre: str = Field(..., min_length=1, max_length=200)
@@ -76,6 +78,14 @@ class RegistrationCreate(BaseModel):
             raise ValueError(f"Course must be one of: {', '.join(ALLOWED_COURSES)}")
         return v
 
+    @field_validator("current_class")
+    @classmethod
+    def validate_current_class(cls, v: str) -> str:
+        v = v.strip()
+        if v not in ALLOWED_CLASSES:
+            raise ValueError(f"Current class must be one of: {', '.join(ALLOWED_CLASSES)}")
+        return v
+
     @field_validator("exam_centre", "exam_date", "exam_time")
     @classmethod
     def strip_field(cls, v: str) -> str:
@@ -86,6 +96,7 @@ class RegistrationUpdate(BaseModel):
     """Registration form update (all fields optional)."""
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     father_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    current_class: Optional[str] = Field(None, min_length=1, max_length=50)
     medium: Optional[str] = Field(None, min_length=1, max_length=100)
     course: Optional[str] = Field(None, min_length=1, max_length=100)
     exam_centre: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -100,6 +111,7 @@ class RegistrationResponse(BaseModel):
     roll_no: str
     name: str
     father_name: str
+    current_class: Optional[str] = ""
     medium: str
     course: str
     exam_centre: str
@@ -116,6 +128,7 @@ class AdmitCardData(BaseModel):
     roll_no: str
     name: str
     father_name: str
+    current_class: str = ""
     medium: str
     course: str
     exam_centre: str

@@ -88,6 +88,7 @@
               <th>Roll No.</th>
               <th>Name</th>
               <th>Father's Name</th>
+              <th>Class</th>
               <th>Medium</th>
               <th>Course</th>
               <th>Exam Date</th>
@@ -108,6 +109,7 @@
                 <td class="td-roll">{{ user.registration.roll_no }}</td>
                 <td>{{ user.registration.name }}</td>
                 <td>{{ user.registration.father_name }}</td>
+                <td>{{ user.registration.current_class || '-' }}</td>
                 <td>{{ user.registration.medium }}</td>
                 <td>{{ user.registration.course }}</td>
                 <td>{{ user.registration.exam_date }}</td>
@@ -146,7 +148,7 @@
                 </td>
               </template>
               <template v-else>
-                <td colspan="8" class="td-no-reg">— Not Registered —</td>
+                <td colspan="9" class="td-no-reg">— Not Registered —</td>
                 <td class="td-actions">
                   <button
                     class="btn-action btn-delete"
@@ -160,7 +162,7 @@
               </template>
             </tr>
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="12" class="td-empty">No users found.</td>
+              <td colspan="14" class="td-empty">No users found.</td>
             </tr>
           </tbody>
         </table>

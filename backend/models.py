@@ -49,6 +49,7 @@ class Registration(Base):
     roll_no = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     father_name = Column(String, nullable=False)
+    current_class = Column(String, nullable=True, default="")
     medium = Column(String, nullable=False)
     course = Column(String, nullable=False)
     exam_centre = Column(String, nullable=False)

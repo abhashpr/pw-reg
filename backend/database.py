@@ -39,7 +39,7 @@ def init_db() -> None:
     from sqlalchemy import text, inspect
     Base.metadata.create_all(bind=engine)
 
-    # Migrate: add exam_time column to registrations if it doesn't exist
+    # Migrate: add missing columns to registrations if they don't exist
     with engine.connect() as conn:
         inspector = inspect(engine)
         existing_cols = [c["name"] for c in inspector.get_columns("registrations")]
@@ -48,6 +48,9 @@ def init_db() -> None:
             conn.commit()
         if "admit_card_sent" not in existing_cols:
             conn.execute(text("ALTER TABLE registrations ADD COLUMN admit_card_sent BOOLEAN DEFAULT 0 NOT NULL"))
+            conn.commit()
+        if "current_class" not in existing_cols:
+            conn.execute(text("ALTER TABLE registrations ADD COLUMN current_class VARCHAR DEFAULT ''"))
             conn.commit()
 
     otp_cols = [c["name"] for c in inspector.get_columns("otp_codes")]

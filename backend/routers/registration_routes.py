@@ -105,6 +105,7 @@ async def create_or_update_registration(
         # Update existing registration
         registration.name = request.name
         registration.father_name = request.father_name
+        registration.current_class = request.current_class
         registration.medium = request.medium
         registration.course = request.course
         registration.exam_centre = request.exam_centre
@@ -121,6 +122,7 @@ async def create_or_update_registration(
             roll_no=roll_no,
             name=request.name,
             father_name=request.father_name,
+            current_class=request.current_class,
             medium=request.medium,
             course=request.course,
             exam_centre=request.exam_centre,
@@ -202,6 +204,7 @@ async def download_admit_card(
             roll_no=registration.roll_no,
             name=registration.name,
             father_name=registration.father_name,
+            current_class=registration.current_class or "",
             medium=registration.medium,
             course=registration.course,
             exam_centre=registration.exam_centre,

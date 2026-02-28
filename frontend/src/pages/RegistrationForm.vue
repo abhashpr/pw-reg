@@ -20,8 +20,18 @@
           </div>
         </div>
 
-        <!-- Row 2: Medium + Course -->
+        <!-- Row 2: Current Class + Medium -->
         <div class="form-row">
+          <div class="form-group">
+            <label for="current_class">Current Class *</label>
+            <select id="current_class" v-model="form.current_class" required :disabled="loading">
+              <option value="" disabled>Select current class</option>
+              <option value="X">X</option>
+              <option value="XI">XI</option>
+              <option value="XII">XII</option>
+              <option value="Dropper">Dropper</option>
+            </select>
+          </div>
           <div class="form-group">
             <label for="medium">Medium *</label>
             <select id="medium" v-model="form.medium" required :disabled="loading">
@@ -30,15 +40,17 @@
               <option value="English">English</option>
             </select>
           </div>
-          <div class="form-group">
-            <label for="course">Course Opted for *</label>
-            <select id="course" v-model="form.course" required :disabled="loading">
-              <option value="" disabled>Select course</option>
-              <option value="Engineering (JEE)">Engineering (JEE)</option>
-              <option value="Medical (NEET)">Medical (NEET)</option>
-              <option value="Foundation (Class 6-10)">Foundation (Class 6-10)</option>
-            </select>
-          </div>
+        </div>
+
+        <!-- Row 3: Course -->
+        <div class="form-group full-width">
+          <label for="course">Course Opted for *</label>
+          <select id="course" v-model="form.course" required :disabled="loading">
+            <option value="" disabled>Select course</option>
+            <option value="Engineering (JEE)">Engineering (JEE)</option>
+            <option value="Medical (NEET)">Medical (NEET)</option>
+            <!-- <option value="Foundation (Class 6-10)">Foundation (Class 6-10)</option> -->
+          </select>
         </div>
 
         <!-- Exam Centre -->
@@ -101,6 +113,7 @@ const router = useRouter()
 const form = reactive({
   name: '',
   father_name: '',
+  current_class: '',
   medium: '',
   course: '',
   exam_centre: '',
@@ -158,6 +171,7 @@ onMounted(async () => {
     if (response.data) {
       form.name = response.data.name
       form.father_name = response.data.father_name
+      form.current_class = response.data.current_class || ''
       form.medium = response.data.medium
       form.course = response.data.course
       form.exam_centre = response.data.exam_centre

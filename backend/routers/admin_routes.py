@@ -24,6 +24,7 @@ class RegistrationDetail(BaseModel):
     roll_no: str
     name: str
     father_name: str
+    current_class: Optional[str] = ""
     medium: str
     course: str
     exam_date: str
@@ -121,6 +122,7 @@ async def admin_download_admit_card(
         roll_no=registration.roll_no,
         name=registration.name,
         father_name=registration.father_name,
+        current_class=registration.current_class or "",
         medium=registration.medium,
         course=registration.course,
         exam_centre=registration.exam_centre,
@@ -165,6 +167,7 @@ async def admin_send_admit_card(
         roll_no=registration.roll_no,
         name=registration.name,
         father_name=registration.father_name,
+        current_class=registration.current_class or "",
         medium=registration.medium,
         course=registration.course,
         exam_centre=registration.exam_centre,

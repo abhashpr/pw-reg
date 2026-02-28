@@ -37,6 +37,7 @@ class AdmitCardGenerator:
         roll_no: str,
         name: str,
         father_name: str,
+        current_class: str,
         medium: str,
         course: str,
         exam_centre: str,
@@ -50,6 +51,7 @@ class AdmitCardGenerator:
             roll_no: Student roll number
             name: Student name
             father_name: Father's name
+            current_class: Current class of student
             medium: Medium of exam
             course: Course opted
             exam_centre: Exam centre
@@ -184,6 +186,7 @@ class AdmitCardGenerator:
                 ("Roll No.", roll_no),
                 ("Name of the Student", name),
                 ("Father's Name", father_name),
+                ("Current Class", current_class or "-"),
                 ("Medium", medium),
                 ("Course Opted for", course),
                 ("Exam Centre", exam_centre),
