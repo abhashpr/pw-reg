@@ -66,9 +66,9 @@
         </div>
 
         <div class="actions">
-          <router-link to="/registration" class="btn btn-secondary">
+          <button class="btn btn-secondary btn-disabled" disabled>
             Edit Registration
-          </router-link>
+          </button>
 
           <button class="btn btn-success" @click="downloadAdmitCard" :disabled="downloadLoading">
             {{ downloadLoading ? 'Generating...' : 'Download Admit Card' }}
@@ -344,6 +344,12 @@ h2 {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .alert {
