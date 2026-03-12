@@ -10,6 +10,8 @@
         </div>
         <div class="header-right">
           <span class="admin-email">{{ userEmail }}</span>
+          <router-link to="/admin/results" class="btn btn-secondary">Results</router-link>
+          <router-link to="/results" class="btn btn-secondary">Search Results</router-link>
           <router-link to="/dashboard" class="btn btn-secondary">Dashboard</router-link>
           <button class="btn btn-logout" @click="handleLogout">Logout</button>
         </div>
@@ -99,11 +101,11 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(user, index) in filteredUsers" :key="user.id" :class="{ 'row-selected': selectedIds.includes(user.id) }">
+            <tr v-for="(user, index) in paginatedUsers" :key="user.id" :class="{ 'row-selected': selectedIds.includes(user.id) }">
               <td class="td-check">
                 <input type="checkbox" :checked="selectedIds.includes(user.id)" @change="toggleSelect(user.id)" />
               </td>
-              <td class="td-index">{{ index + 1 }}</td>
+              <td class="td-index">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
               <td class="td-email">{{ user.email }}</td>
               <template v-if="user.registration">
                 <td class="td-roll">{{ user.registration.roll_no }}</td>
@@ -161,11 +163,31 @@
                 </td>
               </template>
             </tr>
-            <tr v-if="filteredUsers.length === 0">
+            <tr v-if="paginatedUsers.length === 0">
               <td colspan="14" class="td-empty">No users found.</td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="filteredUsers.length > 0" class="pagination">
+        <button class="btn-page" :disabled="currentPage === 1" @click="currentPage--">← Prev</button>
+        <div class="page-info">
+          Page <select v-model="currentPage" class="page-select">
+            <option v-for="p in totalPages" :key="p" :value="p">{{ p }}</option>
+          </select> of {{ totalPages }}
+        </div>
+        <div class="page-size-select">
+          <label>Show:</label>
+          <select v-model="pageSize" @change="currentPage = 1">
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+        </div>
+        <button class="btn-page" :disabled="currentPage === totalPages" @click="currentPage++">Next →</button>
       </div>
 
     </div>
@@ -173,7 +195,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminAPI } from '../api/client'
 import { authStore } from '../store/auth'
@@ -189,6 +211,13 @@ const toast = ref(null)
 const selectedIds = ref([])
 const bulkLoading = ref(null)
 const pendingOnly = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+
+// Reset to page 1 when filters change
+watch([searchQuery, pendingOnly], () => {
+  currentPage.value = 1
+})
 
 // Redirect non-admins
 if (!authStore.isAdmin()) {
@@ -248,6 +277,13 @@ const filteredUsers = computed(() => {
   })
 })
 
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value)))
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredUsers.value.slice(start, start + pageSize.value)
+})
+
 const allSelected = computed({
   get: () => filteredUsers.value.length > 0 && filteredUsers.value.every(u => selectedIds.value.includes(u.id)),
   set: (val) => {
@@ -301,8 +337,13 @@ const sendCard = async (user) => {
 }
 
 const handleLogout = () => {
+  const wasAdmin = authStore.isAdmin()
   authStore.logout()
-  router.push('/login')
+  if (wasAdmin) {
+    router.push({ path: '/admin/login', query: { admin: '1' } })
+  } else {
+    router.push('/results')
+  }
 }
 
 const deleteUser = async (user) => {
@@ -892,5 +933,71 @@ input[type="checkbox"] {
   .stat {
     min-width: 50%;
   }
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-page {
+  padding: 10px 18px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  color: white;
+  border-color: #1a1a2e;
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #555;
+}
+
+.page-select {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.page-size-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+.page-size-select select {
+  padding: 6px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
 }
 </style>

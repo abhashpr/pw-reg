@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # If not set, falls back to SENDER_EMAIL only.
     # Example: ADMIN_EMAILS=["alice@example.com","bob@example.com"]
     admin_emails: List[str] = []
+    # Optional pre-generated token that grants access to admin OTP flow.
+    # Set this in your .env as ADMIN_ACCESS_TOKEN to require the token for admin OTP requests.
+    admin_access_token: str | None = None
 
 
 @lru_cache()

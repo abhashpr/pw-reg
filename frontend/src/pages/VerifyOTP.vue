@@ -45,7 +45,7 @@
       </form>
 
       <p class="hint">
-        Didn't receive an OTP? <router-link to="/login">Send another one</router-link>
+        Didn't receive an OTP? <router-link :to="(route.query?.admin || sessionStorage.getItem('pending_admin') === '1') ? '/admin/login' : '/results'">Send another one</router-link>
       </p>
     </div>
   </div>
@@ -53,11 +53,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { authAPI } from '../api/client'
 import { authStore } from '../store/auth'
 
 const router = useRouter()
+const route = useRoute()
 const email = ref('')
 const otp = ref('')
 const loading = ref(false)
@@ -70,7 +71,11 @@ onMounted(() => {
   if (pendingEmail) {
     email.value = pendingEmail
   } else {
-    router.push('/login')
+    // If this verify page was reached without a pending email, send user back
+    // to admin login if admin intent present, otherwise to results.
+    const adminIntent = Boolean(route.query?.admin) || sessionStorage.getItem('pending_admin') === '1'
+    sessionStorage.removeItem('pending_admin')
+    router.push(adminIntent ? '/admin/login' : '/results')
   }
 })
 
@@ -111,7 +116,9 @@ const handleSubmit = async () => {
 
 const goBack = () => {
   sessionStorage.removeItem('pending_email')
-  router.push('/login')
+  const adminIntent = Boolean(route.query?.admin) || sessionStorage.getItem('pending_admin') === '1'
+  sessionStorage.removeItem('pending_admin')
+  router.push(adminIntent ? '/admin/login' : '/results')
 }
 </script>
 
@@ -121,6 +128,7 @@ const goBack = () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-width: 100%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
 }

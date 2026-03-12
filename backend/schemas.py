@@ -19,6 +19,10 @@ NAME_RE = re.compile(r"^[\w\s.\-']+$", re.UNICODE)
 class SendOTPRequest(BaseModel):
     """Request for sending OTP."""
     email: EmailStr
+    # Optional: indicate admin login intent (true when accessing admin flows)
+    admin: bool | None = False
+    # Optional pre-generated admin token (admin must supply this when `admin` is true)
+    admin_token: str | None = None
 
 
 class VerifyOTPRequest(BaseModel):

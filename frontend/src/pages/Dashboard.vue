@@ -70,6 +70,8 @@
             Edit Registration
           </button>
 
+          <router-link to="/results" class="btn btn-primary">Search Results</router-link>
+
           <button class="btn btn-success" @click="downloadAdmitCard" :disabled="downloadLoading">
             {{ downloadLoading ? 'Generating...' : 'Download Admit Card' }}
           </button>
@@ -155,13 +157,18 @@ const downloadAdmitCard = async () => {
 }
 
 const handleLogout = () => {
+  const wasAdmin = authStore.isAdmin()
   authStore.logout()
-  router.push('/login')
+  if (wasAdmin) {
+    router.push({ path: '/admin/login', query: { admin: '1' } })
+  } else {
+    router.push('/results')
+  }
 }
 
 // Redirect if not authenticated
 if (!authStore.isAuthenticated()) {
-  router.push('/login')
+  router.push('/results')
 }
 </script>
 

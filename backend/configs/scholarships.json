@@ -1,0 +1,48 @@
+[
+  {
+    "percentage": "range(90-100)",
+    "scholarship": 90,
+    "message": "Outstanding performance — full scholarship!"
+  },
+  {
+    "percentage": "range(91-95)",
+    "scholarship": 80,
+    "message": "Excellent — you've earned an 80% scholarship"
+  },
+  {
+    "percentage": "range(86-90)",
+    "scholarship": 70,
+    "message": "Good work — eligible for 70% scholarship"
+  },
+  {
+    "percentage": "range(81-85)",
+    "scholarship": 60,
+    "message": "Good work — eligible for 60% scholarship"
+  },
+  {
+    "percentage": "range(71-80)",
+    "scholarship": 50,
+    "message": "Good work — eligible for 50% scholarship"
+  },
+    {
+        "percentage": "range(61-70)",
+        "scholarship": 40,
+        "message": "Good work — eligible for 40% scholarship"
+    },
+    {
+        "percentage": "range(51-60)",
+        "scholarship": 30,
+        "message": "Good work — eligible for 30% scholarship"
+    },
+
+    {
+        "percentage": "range(30-50)",
+        "scholarship": 20,
+        "message": "Good work — eligible for 20% scholarship"
+    },
+    {
+        "percentage": "range(0-30)",
+        "scholarship": 0,
+        "message": "Thanks for appearing for the NSAT exam. Looking forward for your success and hope you will let us join with you in your journey ahead !"
+    }
+]

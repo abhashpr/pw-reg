@@ -2,7 +2,7 @@
 
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from models import User, OTPCode
 from config import get_settings
@@ -24,6 +24,16 @@ class OTPService:
             6-digit OTP as string
         """
         return ''.join(random.choices(string.digits, k=6))
+
+    @staticmethod
+    def _to_aware(dt: Optional[datetime]) -> Optional[datetime]:
+        """Convert a possibly naive datetime from the DB to an aware datetime in UTC."""
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            # treat naive datetimes as UTC
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
     
     @staticmethod
     def create_otp(db: Session, email: str, user_id: Optional[int] = None) -> Optional[OTPCode]:
@@ -46,7 +56,8 @@ class OTPService:
         ).order_by(OTPCode.created_at.desc()).first()
         
         if recent_otp:
-            time_diff = datetime.utcnow() - recent_otp.created_at
+            recent_created = OTPService._to_aware(recent_otp.created_at)
+            time_diff = datetime.now(timezone.utc) - recent_created
             if time_diff.total_seconds() < settings.otp_rate_limit_seconds:
                 logger.warning(f"OTP rate limit exceeded for {email}")
                 return None
@@ -60,7 +71,7 @@ class OTPService:
         
         # Generate new OTP
         otp_code = OTPService.generate_otp()
-        expiry = datetime.utcnow() + timedelta(minutes=settings.otp_expiry_minutes)
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=settings.otp_expiry_minutes)
         
         otp = OTPCode(
             user_id=user_id,
@@ -103,7 +114,8 @@ class OTPService:
         logger.info(f"verify_otp: queried='{email}' stored_email='{existing_otp.email}' stored_otp='{existing_otp.otp}'")
         
         # Check if OTP has expired
-        if existing_otp.expiry < datetime.utcnow():
+        existing_expiry = OTPService._to_aware(existing_otp.expiry)
+        if existing_expiry < datetime.now(timezone.utc):
             logger.warning(f"OTP expired for {email}")
             db.delete(existing_otp)
             db.commit()

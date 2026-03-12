@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models."""
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -61,3 +61,18 @@ class Registration(Base):
     
     # Relationships
     user = relationship("User", back_populates="registration")
+
+
+class StudentResult(Base):
+    """Student result entries imported from admin Excel uploads."""
+
+    __tablename__ = "student_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    phone = Column(String, nullable=False, index=True)
+    percentage = Column(Float, nullable=True)
+    rank = Column(Integer, nullable=True)
+    source_file = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

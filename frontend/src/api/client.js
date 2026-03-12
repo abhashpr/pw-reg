@@ -25,8 +25,10 @@ client.interceptors.response.use(
   (error) => {
     // Logout if unauthorized
     if (error.response?.status === 401) {
+      const wasAdmin = authStore.isAdmin()
       authStore.logout()
-      window.location.href = '/login'
+      // Redirect admins to admin login, others to public results
+      window.location.href = wasAdmin ? '/admin/login' : '/results'
     }
     return Promise.reject(error)
   }
@@ -36,7 +38,8 @@ client.interceptors.response.use(
  * Authentication API calls.
  */
 export const authAPI = {
-  sendOTP: (email) => client.post('/auth/send-otp', { email }),
+  // sendOTP now accepts a payload object: { email, admin?, admin_token? }
+  sendOTP: (payload) => client.post('/auth/send-otp', payload),
   verifyOTP: (email, otp) => client.post('/auth/verify-otp', { email, otp }),
   getCurrentUser: () => client.get('/auth/me')
 }
@@ -60,6 +63,16 @@ export const adminAPI = {
   deleteUser: (userId) => client.delete(`/admin/users/${userId}`),
   bulkSendAdmitCards: (userIds) => client.post('/admin/users/bulk-send', { user_ids: userIds }),
   bulkDeleteUsers: (userIds) => client.post('/admin/users/bulk-delete', { user_ids: userIds })
+}
+
+/**
+ * Results API (admin + public)
+ */
+export const resultsAPI = {
+  uploadResults: (formData) => client.post('/results/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  listResultsAdmin: () => client.get('/results/admin'),
+  truncateResults: () => client.delete('/results/admin/truncate'),
+  searchResult: (params) => client.get('/results/search', { params })
 }
 
 /**

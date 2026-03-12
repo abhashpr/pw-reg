@@ -17,6 +17,17 @@
           />
         </div>
 
+        <div v-if="isAdminIntent" class="form-group">
+          <label for="admin-token">Admin Access Token</label>
+          <input
+            id="admin-token"
+            v-model="adminToken"
+            type="password"
+            placeholder="Enter admin token"
+            :disabled="loading"
+          />
+        </div>
+
         <button type="submit" class="btn btn-primary" :disabled="loading">
           {{ loading ? 'Sending...' : 'Send OTP' }}
         </button>
@@ -34,12 +45,15 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { authAPI } from '../api/client'
 import { authStore } from '../store/auth'
 
 const router = useRouter()
+const route = useRoute()
 const email = ref('')
+const adminToken = ref('')
+const isAdminIntent = ref(Boolean(route.query?.admin))
 const loading = ref(false)
 const error = ref('')
 const success = ref('')
@@ -50,15 +64,23 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    await authAPI.sendOTP(email.value)
+    const payload = { email: email.value }
+    if (isAdminIntent.value) {
+      payload.admin = true
+      payload.admin_token = adminToken.value || undefined
+    }
+    await authAPI.sendOTP(payload)
     success.value = 'OTP sent! Check your email.'
     
     // Store email for next step
     sessionStorage.setItem('pending_email', email.value)
-    
-    // Redirect to OTP verification
+    if (isAdminIntent.value) sessionStorage.setItem('pending_admin', '1')
+
+    // Redirect to OTP verification, preserve admin query
     setTimeout(() => {
-      router.push('/verify-otp')
+      const to = { path: '/verify-otp' }
+      if (isAdminIntent.value) to.query = { admin: '1' }
+      router.push(to)
     }, 1500)
   } catch (err) {
     const message = err.response?.data?.detail || 'Failed to send OTP. Please try again.'
@@ -80,9 +102,14 @@ if (authStore.isAuthenticated()) {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100vw;
+  min-width: 100%;
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
+  margin: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .card {

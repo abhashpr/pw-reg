@@ -4,11 +4,15 @@ import { authStore } from '../store/auth'
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: '/results'
   },
   {
     path: '/login',
-    name: 'Login',
+    redirect: '/results'
+  },
+  {
+    path: '/admin/login',
+    name: 'AdminLogin',
     component: () => import('../pages/Login.vue'),
     meta: { requiresAuth: false }
   },
@@ -37,8 +41,20 @@ const routes = [
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/admin/results',
+    name: 'ResultsAdmin',
+    component: () => import('../pages/ResultsAdmin.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/results',
+    name: 'ResultsLookup',
+    component: () => import('../pages/ResultsLookup.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/:pathMatch(.*)*',
-    redirect: '/login'
+    redirect: '/results'
   }
 ]
 
@@ -51,15 +67,38 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const isAuthenticated = authStore.isAuthenticated()
   
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login')
-  } else if (to.meta.requiresAdmin && !authStore.isAdmin()) {
-    next('/dashboard')
-  } else if ((to.path === '/login' || to.path === '/verify-otp') && isAuthenticated) {
-    next('/dashboard')
-  } else {
-    next()
-  }
+    // If user is trying to access an admin-only route while unauthenticated,
+    // redirect to the login page and include an admin flag so the login flow
+    // can present admin-specific authentication.
+    if (to.meta.requiresAdmin && !isAuthenticated) {
+      return next({ path: '/admin/login', query: { admin: '1', redirect: to.fullPath } })
+    }
+
+    // Handle access to the login page:
+    // - Authenticated non-admins should not see `/login` (send to dashboard)
+    // - Unauthenticated users are allowed to visit `/login` (so admins can sign in)
+    // - A query param `?admin=1` indicates an admin login intent and is allowed
+    if (to.path === '/admin/login') {
+      if (isAuthenticated && !authStore.isAdmin()) {
+        return next('/dashboard')
+      }
+      return next()
+    }
+
+    // Standard auth checks for other routes
+    if (to.meta.requiresAuth && !isAuthenticated) {
+      return next('/results')
+    }
+
+    if (to.meta.requiresAdmin && !authStore.isAdmin()) {
+      return next('/dashboard')
+    }
+
+    if ((to.path === '/verify-otp') && isAuthenticated) {
+      return next('/dashboard')
+    }
+
+    return next()
 })
 
 export default router

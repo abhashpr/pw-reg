@@ -37,6 +37,7 @@ def get_db():
 def init_db() -> None:
     """Initialize database tables and apply any missing column migrations."""
     from sqlalchemy import text, inspect
+    import re
     Base.metadata.create_all(bind=engine)
 
     # Migrate: add missing columns to registrations if they don't exist
@@ -58,3 +59,29 @@ def init_db() -> None:
         if "failed_attempts" not in otp_cols:
             conn.execute(text("ALTER TABLE otp_codes ADD COLUMN failed_attempts INTEGER DEFAULT 0 NOT NULL"))
             conn.commit()
+
+    # Normalize phone numbers stored in student_results (remove decimals/non-digits)
+    try:
+        student_cols = [c["name"] for c in inspector.get_columns("student_results")]
+    except Exception:
+        student_cols = []
+
+    if student_cols:
+        # Run normalization in Python using SQLAlchemy session
+        from models import StudentResult
+        db = SessionLocal()
+        try:
+            rows = db.query(StudentResult).all()
+            for r in rows:
+                if r.phone:
+                    normalized = ''.join(re.findall(r"\d+", str(r.phone)))
+                    # If phone was parsed as float like '9876543210.0', regex may join groups; handle common trailing '0' from '.0'
+                    # If normalized ends with an extra '0' and original string endswith('.0'), strip the trailing '0'
+                    raw = str(r.phone)
+                    if raw.endswith('.0') and normalized.endswith('0'):
+                        normalized = normalized[:-1]
+                    if normalized != r.phone:
+                        r.phone = normalized
+            db.commit()
+        finally:
+            db.close()

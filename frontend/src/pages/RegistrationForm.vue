@@ -204,7 +204,7 @@ const handleSubmit = async () => {
   }
 }
 
-if (!authStore.isAuthenticated()) { router.push('/login') }
+if (!authStore.isAuthenticated()) { router.push('/results') }
 </script>
 
 <style scoped>

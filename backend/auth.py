@@ -1,6 +1,6 @@
 """Authentication and JWT token management."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 from sqlalchemy.orm import Session
@@ -9,7 +9,6 @@ from config import get_settings
 import logging
 
 logger = logging.getLogger("auth")
-
 
 class AuthService:
     """Service for JWT token management."""
@@ -31,8 +30,8 @@ class AuthService:
         to_encode = {
             "sub": email,
             "user_id": user_id,
-            "exp": datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes),
-            "iat": datetime.utcnow()
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes),
+            "iat": datetime.now(timezone.utc)
         }
         
         encoded_jwt = jwt.encode(
@@ -90,55 +89,6 @@ class AuthService:
         
         user = db.query(User).filter(User.id == user_id).first()
         return user
-
-
-def create_or_get_user(db: Session, email: str) -> User:
-    """
-    Create new user or return existing user.
-    
-    Args:
-        db: Database session
-        email: User email
-        
-    Returns:
-        User object
-    """
-    user = db.query(User).filter(User.email == email).first()
-    
-    if not user:
-        user = User(email=email, is_verified=False)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        logger.info(f"User created: {email}")
-    
-    return user
-
-    
-    @staticmethod
-    def get_current_user(db: Session, token: str) -> Optional[User]:
-        """
-        Get current authenticated user from token.
-        
-        Args:
-            db: Database session
-            token: JWT token
-            
-        Returns:
-            User object if token is valid, None otherwise
-        """
-        payload = AuthService.verify_token(token)
-        
-        if not payload:
-            return None
-        
-        user_id = payload.get("user_id")
-        if not user_id:
-            return None
-        
-        user = db.query(User).filter(User.id == user_id).first()
-        return user
-
 
 def create_or_get_user(db: Session, email: str) -> User:
     """

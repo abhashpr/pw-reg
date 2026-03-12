@@ -39,7 +39,35 @@ async def send_otp(
         HTTPException if email is invalid or OTP send fails
     """
     email = payload.email.lower().strip()
-    
+    settings = get_settings()
+
+    # Determine if this OTP request is for admin flow. Admin flow requires a pre-generated token
+    # and the email must be one of the configured admin emails.
+    is_admin_intent = bool(payload.admin) or (request.query_params.get('admin') == '1')
+
+    if is_admin_intent:
+        # Ensure admin access token is configured on the server
+        if not settings.admin_access_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access token not configured on server"
+            )
+
+        # Validate provided admin token
+        if not payload.admin_token or payload.admin_token != settings.admin_access_token:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Invalid admin access token"
+            )
+
+        # Ensure the email is authorized as an admin email
+        allowed_admins = [e.lower() for e in (settings.admin_emails or [settings.sender_email])]
+        if email not in allowed_admins:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email is not authorized for admin access"
+            )
+
     # Create or get user
     user = create_or_get_user(db, email)
     
