@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     # Set this in your .env as ADMIN_ACCESS_TOKEN to require the token for admin OTP requests.
     admin_access_token: str | None = None
 
+    # Results search fuzzy matching settings
+    # When enabled, results search will first filter by phone, then fuzzy-match name
+    # Set to False to only match by phone number (ignoring name input)
+    fuzzy_name_match_enabled: bool = True
+    # Minimum similarity score (0-100) for a name to be considered a match
+    fuzzy_name_threshold: int = 85
+
 
 @lru_cache()
 def get_settings() -> Settings:

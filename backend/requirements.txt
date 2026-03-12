@@ -10,3 +10,4 @@ reportlab
 python-dotenv
 pandas
 openpyxl
+rapidfuzz

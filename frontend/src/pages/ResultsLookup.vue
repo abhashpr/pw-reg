@@ -1,6 +1,9 @@
 <template>
   <div class="container">
     <div class="card">
+      <div class="logo-wrapper">
+        <img src="../assets/pw-logo.PNG" alt="PW Logo" class="logo" />
+      </div>
       <div class="header">
         <div class="icon"><icon class="pi pi-search"></icon></div>
         <h1>Check Your Result</h1>
@@ -107,14 +110,26 @@ const result = ref(null)
 const search = async () => {
   error.value = ''
   result.value = null
+  
+  // Trim and clean inputs
+  const cleanName = name.value.trim()
+  const cleanPhone = phone.value.trim().replace(/\D/g, '') // digits only
+  
+  if (!cleanPhone) {
+    error.value = 'Please enter a phone number.'
+    return
+  }
+  
   loading.value = true
   try {
-    const res = await resultsAPI.searchResult({ name: name.value, phone: phone.value })
+    const res = await resultsAPI.searchResult({ name: cleanName, phone: cleanPhone })
     console.log("Result Data", res.data)
     result.value = res.data
   } catch (err) {
     if (err.response?.status === 404) {
       error.value = 'No matching result found.'
+    } else if (err.response?.status === 400) {
+      error.value = err.response?.data?.detail || 'Invalid input.'
     } else {
       error.value = 'Search failed. Try again.'
     }
@@ -146,6 +161,16 @@ const search = async () => {
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   width: 100%;
   max-width: 700px;
+}
+
+.logo-wrapper {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  max-width: 180px;
+  height: auto;
 }
 
 .header {

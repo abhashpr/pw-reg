@@ -2,12 +2,19 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
 from models import StudentResult
+from config import get_settings
 from typing import List, Optional
 import pandas as pd
 import json
 import io
 import logging
 import re
+
+try:
+    from rapidfuzz import fuzz
+    RAPIDFUZZ_AVAILABLE = True
+except ImportError:
+    RAPIDFUZZ_AVAILABLE = False
 
 from routers.admin_routes import get_admin_user
 
@@ -193,22 +200,53 @@ def truncate_results_admin(db: Session = Depends(get_db), _=Depends(get_admin_us
     return {"deleted": deleted, "message": "All results data removed."}
 
 
+def _fuzzy_name_match(submitted_name: str, db_name: str, threshold: int = 85) -> bool:
+    """Check if two names match using fuzzy matching."""
+    if not RAPIDFUZZ_AVAILABLE:
+        # Fallback to case-insensitive contains match
+        return submitted_name.lower() in db_name.lower() or db_name.lower() in submitted_name.lower()
+    
+    # Normalize strings (lowercase and remove extra spaces)
+    s1 = ' '.join(submitted_name.strip().lower().split())
+    s2 = ' '.join(db_name.strip().lower().split())
+    
+    # Use token_sort_ratio for best results with names (handles word order differences)
+    score = fuzz.token_sort_ratio(s1, s2)
+    return score >= threshold
+
+
 @router.get("/search")
 def search_result(name: Optional[str] = None, phone: Optional[str] = None, db: Session = Depends(get_db)):
-    """Search for a student result by name and/or phone (public)."""
-    q = db.query(StudentResult)
+    """Search for a student result by name and/or phone (public).
+    
+    Strategy:
+    1. Filter by phone number first (primary key, fast)
+    2. If FUZZY_NAME_MATCH_ENABLED, verify name using fuzzy matching
+    3. If fuzzy matching disabled, return result based on phone only
+    """
+    settings = get_settings()
+    
     # Normalize phone search parameter to digits-only string
-    if phone:
-        norm_phone = ''.join(re.findall(r"\d+", str(phone)))
-        if norm_phone:
-            q = q.filter(StudentResult.phone == norm_phone)
-    if name:
-        q = q.filter(StudentResult.name.ilike(f"%{name}%"))
-
-    print(f"Search query - name: {name}, phone: {phone}")
-    result = q.order_by(StudentResult.id.desc()).first()
+    norm_phone = ''.join(re.findall(r"\d+", str(phone))) if phone else ""
+    
+    if not norm_phone:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required")
+    
+    # Step 1: Find record by phone number (fast, indexed lookup)
+    result = db.query(StudentResult).filter(StudentResult.phone == norm_phone).first()
+    
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+    
+    # Step 2: If fuzzy name matching is enabled, verify the name
+    if settings.fuzzy_name_match_enabled and name:
+        submitted_name = name.strip()
+        if submitted_name:
+            if not _fuzzy_name_match(submitted_name, result.name, settings.fuzzy_name_threshold):
+                logger.info(f"Fuzzy name mismatch: submitted='{submitted_name}' vs stored='{result.name}'")
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+    
+    logger.info(f"Search success - phone: {norm_phone}, name: {name}")
 
     # Evaluate scholarship rules (if any)
     scholarship = None
