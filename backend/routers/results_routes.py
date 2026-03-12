@@ -212,14 +212,26 @@ def search_result(name: Optional[str] = None, phone: Optional[str] = None, db: S
     if settings.fuzzy_name_match_enabled and name:
         submitted_name = name.strip()
         if submitted_name:
-            # Find best match and collect suggestions
+            # Find BEST match (highest score), not just first match above threshold
+            best_match = None
+            best_score = 0
+            
             for r in all_phone_results:
                 score = _get_fuzzy_score(submitted_name, r.name)
-                if score >= settings.fuzzy_name_threshold:
-                    result = r
-                    break
-                elif score >= 50:  # Include as suggestion if somewhat similar
+                if score > best_score:
+                    best_score = score
+                    best_match = r
+                if score < settings.fuzzy_name_threshold and score >= 50:
+                    # Include as suggestion if somewhat similar but below threshold
                     suggestions.append({"name": r.name, "phone": r.phone, "score": score})
+            
+            # Use best match if it meets threshold
+            if best_score >= settings.fuzzy_name_threshold:
+                result = best_match
+            else:
+                # Best match didn't meet threshold - add it to suggestions too
+                if best_match and best_score >= 50:
+                    suggestions.append({"name": best_match.name, "phone": best_match.phone, "score": best_score})
             
             if not result and not suggestions:
                 # No match and no suggestions - return all names for this phone as suggestions
