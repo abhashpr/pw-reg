@@ -55,7 +55,20 @@
         <div class="section-header">
           <span class="section-icon"><i class="pi pi-table"></i></span>
           <h3>Imported Results</h3>
-          <span class="badge">{{ results.length }} records</span>
+          <span class="badge">{{ filteredResults.length }} of {{ results.length }} records</span>
+        </div>
+        <div class="search-box">
+          <i class="pi pi-search search-icon"></i>
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            placeholder="Search by name or phone..." 
+            class="search-input"
+            @input="currentPage = 1"
+          />
+          <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''; currentPage = 1">
+            <i class="pi pi-times"></i>
+          </button>
         </div>
         <div class="table-wrapper">
           <table class="data-table">
@@ -66,6 +79,7 @@
                 <th class="col-phone">Phone</th>
                 <th class="col-pct">Percentage</th>
                 <th class="col-rank">Rank</th>
+                <th class="col-scholarship">Scholarship</th>
                 <th class="col-source">Source</th>
               </tr>
             </thead>
@@ -76,6 +90,7 @@
                 <td class="col-phone">{{ r.phone }}</td>
                 <td class="col-pct"><span class="pct-badge">{{ r.percentage }}%</span></td>
                 <td class="col-rank"><span class="rank-badge">#{{ r.rank }}</span></td>
+                <td class="col-scholarship"><span class="scholarship-badge">{{ r.scholarship ? r.scholarship + '%' : 'N/A' }}</span></td>
                 <td class="col-source"><span class="source-tag">{{ r.source_file }}</span></td>
               </tr>
             </tbody>
@@ -120,12 +135,22 @@ const loading = ref(false)
 const error = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
+const searchQuery = ref('')
 
-const totalPages = computed(() => Math.max(1, Math.ceil(results.value.length / pageSize.value)))
+const filteredResults = computed(() => {
+  if (!searchQuery.value.trim()) return results.value
+  const q = searchQuery.value.toLowerCase().trim()
+  return results.value.filter(r => 
+    r.name?.toLowerCase().includes(q) || 
+    r.phone?.includes(q)
+  )
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredResults.value.length / pageSize.value)))
 
 const paginatedResults = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
-  return results.value.slice(start, start + pageSize.value)
+  return filteredResults.value.slice(start, start + pageSize.value)
 })
 
 const fetchResults = async () => {
@@ -345,6 +370,56 @@ h1 {
   margin-left: auto;
 }
 
+/* Search box */
+.search-box {
+  display: flex;
+  align-items: center;
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  color: #999;
+  font-size: 14px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 40px 12px 40px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-input::placeholder {
+  color: #aaa;
+}
+
+.clear-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+.clear-btn:hover {
+  color: #e53e3e;
+}
+
 .upload-form .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -491,6 +566,15 @@ h1 {
 
 .rank-badge {
   background: #48bb78;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.scholarship-badge {
+  background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
   color: white;
   padding: 4px 10px;
   border-radius: 6px;

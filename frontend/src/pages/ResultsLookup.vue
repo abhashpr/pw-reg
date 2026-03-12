@@ -34,6 +34,25 @@
         <span class="alert-icon">⚠️</span> {{ error }}
       </div>
 
+      <!-- Fuzzy match suggestions -->
+      <div v-if="suggestions.length" class="suggestions-section">
+        <div class="suggestions-header">
+          <span class="suggestions-icon">💡</span>
+          <h3>Did you mean one of these?</h3>
+        </div>
+        <div class="suggestions-list">
+          <button 
+            v-for="(s, i) in suggestions" 
+            :key="i" 
+            class="suggestion-item"
+            @click="selectSuggestion(s)"
+          >
+            <span class="suggestion-name">{{ s.name }}</span>
+            <span class="suggestion-phone">{{ s.phone }}</span>
+          </button>
+        </div>
+      </div>
+
       <div v-if="result" class="results-section">
         <div class="result-card">
           <div class="result-header">
@@ -106,10 +125,12 @@ const phone = ref('')
 const loading = ref(false)
 const error = ref('')
 const result = ref(null)
+const suggestions = ref([])
 
 const search = async () => {
   error.value = ''
   result.value = null
+  suggestions.value = []
   
   // Trim and clean inputs
   const cleanName = name.value.trim()
@@ -127,7 +148,14 @@ const search = async () => {
     result.value = res.data
   } catch (err) {
     if (err.response?.status === 404) {
-      error.value = 'No matching result found.'
+      const detail = err.response?.data?.detail
+      if (detail && typeof detail === 'object' && detail.suggestions) {
+        // Backend returned fuzzy match suggestions
+        suggestions.value = detail.suggestions
+        error.value = detail.message || 'Name does not match.'
+      } else {
+        error.value = 'No matching result found.'
+      }
     } else if (err.response?.status === 400) {
       error.value = err.response?.data?.detail || 'Invalid input.'
     } else {
@@ -136,6 +164,14 @@ const search = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const selectSuggestion = (suggestion) => {
+  name.value = suggestion.name
+  phone.value = suggestion.phone
+  suggestions.value = []
+  error.value = ''
+  search()
 }
 </script>
 
@@ -430,13 +466,83 @@ h1 {
 }
 
 .scholarship-message {
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.7;
   opacity: 0.95;
-  padding: 16px 20px;
+  padding: 20px 24px;
   background: rgba(255,255,255,0.15);
   border-radius: 10px;
-  margin-top: 8px;
+  margin-top: 12px;
+  white-space: pre-line;
+  text-align: left;
+}
+
+/* Fuzzy match suggestions */
+.suggestions-section {
+  margin-top: 24px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff5f5 100%);
+  border: 2px solid #e0e5f5;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.suggestions-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.suggestions-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.suggestions-icon {
+  font-size: 24px;
+}
+
+.suggestions-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: white;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.suggestion-item:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  transform: translateX(4px);
+}
+
+.suggestion-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.suggestion-phone {
+  font-size: 13px;
+  color: #666;
+  background: #f0f0f0;
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 @media (max-width: 600px) {

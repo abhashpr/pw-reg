@@ -73,6 +73,7 @@ class StudentResult(Base):
     phone = Column(String, nullable=False, index=True)
     percentage = Column(Float, nullable=True)
     rank = Column(Integer, nullable=True)
+    scholarship = Column(Float, nullable=True)  # Scholarship percentage from Excel
     source_file = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

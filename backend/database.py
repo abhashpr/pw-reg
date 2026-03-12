@@ -53,6 +53,16 @@ def init_db() -> None:
         if "current_class" not in existing_cols:
             conn.execute(text("ALTER TABLE registrations ADD COLUMN current_class VARCHAR DEFAULT ''"))
             conn.commit()
+        
+        # check for student_results table and add scholarship column if missing
+        try:
+            student_cols = [c["name"] for c in inspector.get_columns("student_results")]
+        except Exception:
+            student_cols = []
+        
+        if "scholarship" not in student_cols:
+            conn.execute(text("ALTER TABLE student_results ADD COLUMN scholarship FLOAT DEFAULT NULL"))
+            conn.commit()
 
     otp_cols = [c["name"] for c in inspector.get_columns("otp_codes")]
     with engine.connect() as conn:

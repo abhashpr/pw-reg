@@ -23,62 +23,6 @@ logger = logging.getLogger("results_routes")
 router = APIRouter(prefix="/results", tags=["results"])
 
 
-# Load scholarship rules from backend/configs/scholarships.json if present
-_SCHOLARSHIP_RULES = None
-
-
-def _load_scholarship_rules():
-    global _SCHOLARSHIP_RULES
-    if _SCHOLARSHIP_RULES is not None:
-        return _SCHOLARSHIP_RULES
-    try:
-        from pathlib import Path
-        cfg_path = Path(__file__).resolve().parents[1] / 'configs' / 'scholarships.json'
-        if not cfg_path.exists():
-            _SCHOLARSHIP_RULES = []
-            return _SCHOLARSHIP_RULES
-
-        with open(cfg_path, 'r', encoding='utf-8') as f:
-            raw = json.load(f)
-
-        rules = []
-        for item in raw:
-            pct = item.get('percentage')
-            # Accept formats: "range(20-30)", "20-30", or {"min":20,"max":30}
-            min_pct = None
-            max_pct = None
-            if isinstance(pct, str):
-                m = re.search(r"range\((\d{1,3})-(\d{1,3})\)", pct)
-                if m:
-                    min_pct = float(m.group(1))
-                    max_pct = float(m.group(2))
-                else:
-                    m2 = re.search(r"^(\d{1,3})-(\d{1,3})$", pct)
-                    if m2:
-                        min_pct = float(m2.group(1))
-                        max_pct = float(m2.group(2))
-            elif isinstance(pct, dict):
-                min_pct = float(pct.get('min')) if pct.get('min') is not None else None
-                max_pct = float(pct.get('max')) if pct.get('max') is not None else None
-
-            scholarship = item.get('scholarship')
-            message = item.get('message')
-            if (min_pct is not None or max_pct is not None) and scholarship is not None:
-                rules.append({
-                    'min': min_pct,
-                    'max': max_pct,
-                    'scholarship': scholarship,
-                    'message': message
-                })
-
-        _SCHOLARSHIP_RULES = rules
-        return _SCHOLARSHIP_RULES
-    except Exception as e:
-        logger.warning(f"Failed to load scholarship rules: {e}")
-        _SCHOLARSHIP_RULES = []
-        return _SCHOLARSHIP_RULES
-
-
 @router.post("/upload")
 async def upload_results(
     excel_file: UploadFile = File(...),
@@ -101,7 +45,8 @@ async def upload_results(
         "name": None,
         "phone": None,
         "percentage": None,
-        "rank": None
+        "rank": None,
+        "scholarship": None
     }
 
     if config_file:
@@ -154,6 +99,23 @@ async def upload_results(
                     rank = int(row.get(mapping["rank"]) or None)
                 except Exception:
                     rank = None
+            
+            scholarship = None
+            if mapping.get("scholarship"):
+                try:
+                    raw_scholarship = row.get(mapping["scholarship"])
+                    
+                    # Handle fractional value
+                    if isinstance(raw_scholarship, float) and 0 < raw_scholarship < 1:
+                        raw_scholarship = raw_scholarship * 100
+                                        
+                    # print(f"Raw scholarship value: {raw_scholarship} (type: {type(raw_scholarship)})")
+                    if pd.notna(raw_scholarship):
+                        # Handle "90%" format - strip % and convert to float
+                        scholarship_str = str(raw_scholarship).strip().rstrip('%')
+                        scholarship = float(scholarship_str)
+                except Exception:
+                    scholarship = None
 
             if not name or not phone:
                 continue
@@ -163,6 +125,7 @@ async def upload_results(
                 phone=phone,
                 percentage=percentage,
                 rank=rank,
+                scholarship=scholarship,
                 source_file=source_filename
             )
             db.add(entry)
@@ -185,6 +148,7 @@ def list_results_admin(db: Session = Depends(get_db), _=Depends(get_admin_user))
             "phone": r.phone,
             "percentage": r.percentage,
             "rank": r.rank,
+            "scholarship": r.scholarship,
             "source_file": r.source_file,
             "created_at": r.created_at
         }
@@ -200,19 +164,22 @@ def truncate_results_admin(db: Session = Depends(get_db), _=Depends(get_admin_us
     return {"deleted": deleted, "message": "All results data removed."}
 
 
-def _fuzzy_name_match(submitted_name: str, db_name: str, threshold: int = 85) -> bool:
-    """Check if two names match using fuzzy matching."""
+def _get_fuzzy_score(submitted_name: str, db_name: str) -> int:
+    """Get fuzzy match score between two names."""
     if not RAPIDFUZZ_AVAILABLE:
-        # Fallback to case-insensitive contains match
-        return submitted_name.lower() in db_name.lower() or db_name.lower() in submitted_name.lower()
+        # Fallback
+        if submitted_name.lower() in db_name.lower() or db_name.lower() in submitted_name.lower():
+            return 100
+        return 0
     
-    # Normalize strings (lowercase and remove extra spaces)
     s1 = ' '.join(submitted_name.strip().lower().split())
     s2 = ' '.join(db_name.strip().lower().split())
-    
-    # Use token_sort_ratio for best results with names (handles word order differences)
-    score = fuzz.token_sort_ratio(s1, s2)
-    return score >= threshold
+    return fuzz.token_sort_ratio(s1, s2)
+
+
+def _fuzzy_name_match(submitted_name: str, db_name: str, threshold: int = 85) -> bool:
+    """Check if two names match using fuzzy matching."""
+    return _get_fuzzy_score(submitted_name, db_name) >= threshold
 
 
 @router.get("/search")
@@ -232,52 +199,71 @@ def search_result(name: Optional[str] = None, phone: Optional[str] = None, db: S
     if not norm_phone:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required")
     
-    # Step 1: Find record by phone number (fast, indexed lookup)
-    result = db.query(StudentResult).filter(StudentResult.phone == norm_phone).first()
+    # Step 1: Find all records by phone number
+    all_phone_results = db.query(StudentResult).filter(StudentResult.phone == norm_phone).all()
     
-    if not result:
+    if not all_phone_results:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
     
     # Step 2: If fuzzy name matching is enabled, verify the name
+    result = None
+    suggestions = []
+    
     if settings.fuzzy_name_match_enabled and name:
         submitted_name = name.strip()
         if submitted_name:
-            if not _fuzzy_name_match(submitted_name, result.name, settings.fuzzy_name_threshold):
-                logger.info(f"Fuzzy name mismatch: submitted='{submitted_name}' vs stored='{result.name}'")
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+            # Find best match and collect suggestions
+            for r in all_phone_results:
+                score = _get_fuzzy_score(submitted_name, r.name)
+                if score >= settings.fuzzy_name_threshold:
+                    result = r
+                    break
+                elif score >= 50:  # Include as suggestion if somewhat similar
+                    suggestions.append({"name": r.name, "phone": r.phone, "score": score})
+            
+            if not result and not suggestions:
+                # No match and no suggestions - return all names for this phone as suggestions
+                suggestions = [{"name": r.name, "phone": r.phone, "score": 0} for r in all_phone_results]
+            
+            if not result:
+                # Sort suggestions by score descending
+                suggestions.sort(key=lambda x: x["score"], reverse=True)
+                logger.info(f"Fuzzy name mismatch: submitted='{submitted_name}' - returning {len(suggestions)} suggestions")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail={"message": "Name does not match. Did you mean one of these?", "suggestions": suggestions[:5]}
+                )
+        else:
+            result = all_phone_results[0]
+    else:
+        result = all_phone_results[0]
     
     logger.info(f"Search success - phone: {norm_phone}, name: {name}")
 
-    # Evaluate scholarship rules (if any)
-    scholarship = None
-    try:
-        rules = _load_scholarship_rules()
-        pct = None
-        if result.percentage is not None:
-            try:
-                pct = float(result.percentage)
-            except Exception:
-                pct = None
+    # Build scholarship response using value directly from Excel/DB
+    scholarship_data = None
+    if result.scholarship is not None:
+        scholarship_value = int(result.scholarship) if result.scholarship == int(result.scholarship) else result.scholarship
+        scholarship_message = f"""🎉 Congratulations!
 
-        if pct is not None and rules:
-            for r in rules:
-                minv = r.get('min')
-                maxv = r.get('max')
-                if minv is None and maxv is None:
-                    continue
-                match = False
-                if minv is None and maxv is not None and pct <= maxv:
-                    match = True
-                elif maxv is None and minv is not None and pct >= minv:
-                    match = True
-                elif minv is not None and maxv is not None and (pct >= minv and pct <= maxv):
-                    match = True
+You have successfully qualified in the NSAT Scholarship Test.
 
-                if match:
-                    scholarship = {"scholarship": r.get('scholarship'), "message": r.get('message')}
-                    break
-    except Exception:
-        scholarship = None
+Based on your performance, you have been awarded a scholarship of {scholarship_value}% on SVPS PW Vidyapeeth programs.
+
+To avail your scholarship and secure your admission, please visit the campus with your parents at the earliest.
+
+📍 Venue: SVPS School
+Near Ughadmal Balaji, Sawaimadhopur Road, Gangapur City
+
+📞 For more information contact: 9983616223 / 9983616224
+
+⚠️ Scholarship is valid for a limited period and applicable as per institute terms & conditions.
+
+We look forward to welcoming you and helping you achieve your academic goals!"""
+        scholarship_data = {
+            "scholarship": scholarship_value,
+            "message": scholarship_message
+        }
 
     resp = {
         "id": result.id,
@@ -288,7 +274,6 @@ def search_result(name: Optional[str] = None, phone: Optional[str] = None, db: S
         "source_file": result.source_file,
         "created_at": result.created_at
     }
-    print(f"Scholarship evaluated: {scholarship}")
-    if scholarship:
-        resp['scholarship'] = scholarship
+    if scholarship_data:
+        resp['scholarship'] = scholarship_data
     return resp
